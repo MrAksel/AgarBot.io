@@ -7,7 +7,7 @@
     <ProjectGuid>{18910858-E20F-4DEA-B830-37FA14694C8F}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>AgarBot.io</RootNamespace>
+    <RootNamespace>AgarBot</RootNamespace>
     <AssemblyName>AgarBot.io</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -46,9 +46,15 @@
   <ItemGroup>
     <Compile Include="AgarClient.cs" />
     <Compile Include="AgarPacket.cs" />
-    <Compile Include="AgarPacketManager.cs" />
+    <Compile Include="EatEvent.cs" />
+    <Compile Include="Extensions.cs" />
+    <Compile Include="PacketManagers\DefaultPacketManager.cs" />
     <Compile Include="AgarWorld.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UpdateEvent.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="GameStrategies\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
