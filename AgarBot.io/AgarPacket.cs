@@ -3,7 +3,7 @@ using System;
 
 namespace AgarBot
 {
-    internal struct AgarPacket
+    public struct AgarPacket
     {
         byte opcode;
         byte[] data;
@@ -20,13 +20,21 @@ namespace AgarBot
             set { data = value; }
         }
 
-        internal AgarPacket(byte opcode, byte[] payload)
+        public long PayloadLength
+        {
+            get
+            {
+                return data.LongLength;
+            }
+        }
+
+        public AgarPacket(byte opcode, byte[] payload)
         {
             this.opcode = opcode;
             this.data = payload;
         }
 
-        internal byte[] ToByteArray()
+        public byte[] ToByteArray()
         {
             byte[] d = new byte[1 + data.Length];
             d[0] = opcode;
@@ -34,7 +42,7 @@ namespace AgarBot
             return d;
         }
 
-        internal static AgarPacket FromByteArray(byte[] message)
+        public static AgarPacket FromByteArray(byte[] message)
         {
             if (message == null || message.Length == 0)
                 throw new ArgumentException();
@@ -49,7 +57,7 @@ namespace AgarBot
         }
     }
 
-    internal enum ClientPacketType : byte
+    public enum ClientPacketType : byte
     {
         SendNicknameAndSpawn = 0,
         StartSpectating = 1,
@@ -65,16 +73,16 @@ namespace AgarBot
         Init2 = 255,
     }
 
-    internal enum ServerPacketType :byte
+    public enum ServerPacketType : byte
     {
         WorldUpdate = 16,
         ViewUpdate = 17,
         Reset = 20,
         DrawDebugLine = 21,
-        OwnsBlob= 32,
+        OwnsBlob = 32,
         FFALeaderboard = 49,
         TeamLeaderboard = 50,
-        GameAreaSize=64,
+        GameAreaSize = 64,
         HelloHelloHello = (byte)'H',
         MessageLength = 240,
     }

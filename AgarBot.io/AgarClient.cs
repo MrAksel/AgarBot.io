@@ -1,10 +1,9 @@
-﻿using MiscUtil.Conversion;
+﻿using AgarBot.PackageManagers;
+using MiscUtil.Conversion;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace AgarBot
 {
@@ -19,8 +18,8 @@ namespace AgarBot
         private object userActions_l;
         private Queue<AgarPacket> userActions;
 
-        private AgarPacketManager pacman;
-        public AgarPacketManager PacketManager
+        private DefaultPacketManager pacman;
+        public DefaultPacketManager PacketManager
         {
             get
             {
@@ -37,7 +36,7 @@ namespace AgarBot
             }
         }
 
-        public AgarClient(AgarPacketManager pm)
+        public AgarClient(DefaultPacketManager pm)
         {
             world = new AgarWorld();
             bc = new LittleEndianBitConverter();
@@ -47,14 +46,17 @@ namespace AgarBot
 
             userActions_l = new object();
             userActions = new Queue<AgarPacket>();
+        }
 
-            mainloop = new Thread(main);
 
+        public void StartProcessingLoop()
+        {
             stillalive = true;
+            mainloop = new Thread(main);
             mainloop.Start();
         }
 
-        public void StartInitialization()
+        public void SendInitializationPackets()
         {
             AgarPacket init1 = new AgarPacket();
             init1.OpCode = (byte)ClientPacketType.Init1;
@@ -75,12 +77,19 @@ namespace AgarBot
             pacman.SendPacket(conntoken);
         }
 
+        public void StopProcessingLoop()
+        {
+            stillalive = false;
+            mainloop.Join();
+        }
+
+
         private void main()
         {
             while (stillalive)
             {
                 WaitHandle[] events = new WaitHandle[] { wait_useraction, pacman.WaitPacketReceived };
-                int which = WaitHandle.WaitAny(events); // No timeout
+                int which = WaitHandle.WaitAny(events, 125); // Timeout so that we can stop the loop
 
                 if (which == WaitHandle.WaitTimeout)
                 {
@@ -102,15 +111,88 @@ namespace AgarBot
                     while (pacman.Available > 0)
                     {
                         AgarPacket p = pacman.DequeuePacket();
-                        ProcessPacket(p);
+                        DispatchPacket(p);
                     }
                 }
             }
         }
-
-        private void ProcessPacket(AgarPacket p)
+        
+        private void DispatchPacket(AgarPacket p)
         {
             Console.WriteLine("Received {0} packet with {1} bytes of data.", (ServerPacketType)p.OpCode, p.Payload.Length);
+
+            switch ((ServerPacketType)p.OpCode)
+            {
+                case ServerPacketType.GameAreaSize:
+                    // TODO Assert PayloadLength == 32
+                    double min_x = bc.ToDouble(p.Payload, 0);
+                    double min_y = bc.ToDouble(p.Payload, 8);
+                    double max_x = bc.ToDouble(p.Payload, 16);
+                    double max_y = bc.ToDouble(p.Payload, 24);
+                    world.SetBounds(min_x, min_y, max_x, max_y);
+                    break;
+
+                case ServerPacketType.WorldUpdate:
+                    // Read eat events
+                    uint count = bc.ToUInt16(p.Payload, 0);
+                    EatEvent[] eats = new EatEvent[count];
+                    for (int i = 0; i < count; i++)
+                    {
+                        eats[i] = new EatEvent()
+                        {
+                            eater_id = bc.ToUInt32(p.Payload, i * 8),
+                            victim_id = bc.ToUInt32(p.Payload, i * 8 + 4)
+                        };
+                    }
+
+                    // Read cell updates (names, size, position)
+                    List<UpdateEvent> updates = new List<UpdateEvent>();
+                    UpdateEvent current;
+                    int offset = 0;
+
+                    while (true)
+                    {
+                        current.player_id = bc.ToUInt32(p.Payload, offset);
+                        if (current.player_id == 0)
+                            break;
+
+                        current.x = bc.ToUInt32(p.Payload, offset + 4);
+                        current.y = bc.ToUInt32(p.Payload, offset + 8);
+
+                        current.radius = bc.ToUInt16(p.Payload, offset + 10);
+                        current.red = p.Payload[offset + 11];
+                        current.green = p.Payload[offset + 12];
+                        current.blue = p.Payload[offset + 13];
+                        current.flags = p.Payload[offset + 14];
+
+                        if ((current.flags & 0x02) != 0)
+                            offset += 4; // Unsure about this...
+
+                        current.skin_url = null; // Just to fully initialize the struct
+
+                        int bytesread = 0;
+                        if ((current.flags & 0x04) != 0)
+                            current.skin_url = bc.ReadNullStr8(p.Payload, offset + 15, out bytesread);
+                        offset += bytesread;
+
+                        current.name = bc.ReadNullStr16(p.Payload, offset + 15, out bytesread);
+                        offset += bytesread;
+
+                        updates.Add(current);
+                    }
+
+                    // Read cell removals (out of sight, disconnect, etc)
+                    count = bc.ToUInt32(p.Payload, offset + 15);
+                    uint[] removals = new uint[count];
+                    for (int i = 0; i < count; i++)
+                        removals[i] = bc.ToUInt32(p.Payload, offset + 17 + i * 4);
+
+                    world.RegisterEats(eats);
+                    world.RegisterUpdates(updates);
+                    world.RegisterRemovals(removals);
+
+                    break;
+            }
         }
     }
 }
