@@ -116,7 +116,7 @@ namespace AgarBot
                 }
             }
         }
-        
+
         private void DispatchPacket(AgarPacket p)
         {
             Console.WriteLine("Received {0} packet with {1} bytes of data.", (ServerPacketType)p.OpCode, p.Payload.Length);
@@ -152,8 +152,8 @@ namespace AgarBot
 
                     while (true)
                     {
-                        current.player_id = bc.ToUInt32(p.Payload, offset);
-                        if (current.player_id == 0)
+                        current.blob_id = bc.ToUInt32(p.Payload, offset);
+                        if (current.blob_id == 0)
                             break;
 
                         current.x = bc.ToUInt32(p.Payload, offset + 4);
@@ -170,13 +170,10 @@ namespace AgarBot
 
                         current.skin_url = null; // Just to fully initialize the struct
 
-                        int bytesread = 0;
                         if ((current.flags & 0x04) != 0)
-                            current.skin_url = bc.ReadNullStr8(p.Payload, offset + 15, out bytesread);
-                        offset += bytesread;
+                            current.skin_url = bc.ToNullStr8(p.Payload, offset + 15, ref offset); // Will increment offset by num bytes
 
-                        current.name = bc.ReadNullStr16(p.Payload, offset + 15, out bytesread);
-                        offset += bytesread;
+                        current.name = bc.ToNullStr16(p.Payload, offset + 15, ref offset);
 
                         updates.Add(current);
                     }
@@ -191,6 +188,18 @@ namespace AgarBot
                     world.RegisterUpdates(updates);
                     world.RegisterRemovals(removals);
 
+                    break;
+
+                case ServerPacketType.FFALeaderboard:
+                    count = bc.ToUInt32(p.Payload, 0);
+                    offset = 4;
+                    for (uint i = 0; i < count; i++)
+                    {
+                        uint blob_id = bc.ToUInt32(p.Payload, offset); offset += 4;
+                        string name = bc.ToNullStr16(p.Payload, offset, ref offset);
+
+                        // We got the data, add it to a list or something. TODO create a leaderboard class
+                    }
                     break;
             }
         }

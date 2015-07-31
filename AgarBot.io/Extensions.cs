@@ -10,12 +10,12 @@ namespace AgarBot
     public static class Extensions
     {
 
-        public static string ReadNullStr8(this EndianBitConverter bc, byte[] data, int offset, out int bytesRead)
+        public static string ToNullStr8(this EndianBitConverter bc, byte[] data, int offset, ref int incBytesRead)
         {
             throw new NotImplementedException(); // TODO
         }
 
-        public static string ReadNullStr16(this EndianBitConverter bc, byte[] data, int offset, out int bytesRead)
+        public static string ToNullStr16(this EndianBitConverter bc, byte[] data, int offset, ref int incBytesRead)
         {
             throw new NotImplementedException();
         }

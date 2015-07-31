@@ -2,7 +2,7 @@
 {
     public struct UpdateEvent
     {
-        public uint player_id;
+        public uint blob_id;
 
         public uint x;
         public uint y;
